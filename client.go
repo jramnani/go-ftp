@@ -1,8 +1,7 @@
 package ftp
 
 import (
-    "fmt"
-    /*"http"*/
+  "os"
 )
 
 type Connection struct {
@@ -11,16 +10,20 @@ type Connection struct {
   password string
 }
 
-/*type Error struct {*/
-  /*Code int*/
-  /*Message string*/
-/*}*/
-
-func (c *Connection) Connect() *Connection {
-  fmt.Println("User ", c.user)
-  fmt.Println("Pass", c.password)
-  return c
+func newConnection(host string, user string, password string) (*Connection) {
+  return &Connection{host, user, password}
 }
+
+func Connect(host string, user string, password string) (*Connection, os.Error) {
+  if host == "" {
+    return nil, os.NewError("FTP Connection Error: Host can not be blank!")
+  }
+  if user == "" {
+    return nil, os.NewError("FTP Connection Error: User can not be blank!")
+  }
+  return newConnection(host, user, password), nil
+}
+
 
 func (c Connection) String() string {
   // Only print the password if the user is anonymous.
