@@ -1,0 +1,6 @@
+TODO:
+
+* Download a file.
+* List contents of remote directory.
+* Upload a file to an existing directory.
+* Upload a file to a nested directory, creating necessary subfolders.

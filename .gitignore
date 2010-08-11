@@ -1,0 +1,4 @@
+*.out
+_go*
+_obj/
+_test/
