@@ -6,7 +6,7 @@ import (
 )
 
 func TestConnect(t *testing.T) {
-  _, err := Connect("ftp://localhost", "anonymous", "anonymous")
+  _, err := Connect("localhost:21", "anonymous", "anonymous")
   if err != nil {
     t.Error(err)
   }
@@ -17,8 +17,20 @@ func TestConnectErrors(t *testing.T) {
   if err == nil {
     t.Error("Connect() should have an error on blank 'host'!")
   }
-  _, err = Connect("ftp://localhost", "", "anonymous")
+  _, err = Connect("localhost:21", "", "anonymous")
   if err == nil {
     t.Error("Connect() should have an error on blank 'user'!")
   }
 }
+
+func TestLogin(t *testing.T) {
+  conn, err := Connect("localhost:21", "anonymous", "anonymous")
+  if err != nil {
+    t.Fatal(err)
+  }
+  err = conn.Login()
+  if err != nil {
+    t.Error(err)
+  }
+}
+
