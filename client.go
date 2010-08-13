@@ -16,10 +16,10 @@ var CRLF = "\r\n"
 
 func (c *Connection) Login() os.Error {
   conn, err := net.Dial("tcp", "", c.host)
-  defer conn.Close()
   if err != nil {
     return err
   }
+  defer conn.Close()
   _, err = conn.Write([]byte("USER " + c.user + CRLF))
   _, err = conn.Write([]byte("PASS " + c.password + CRLF))
   if err != nil {
