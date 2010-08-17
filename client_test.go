@@ -1,14 +1,17 @@
 package ftp
 
 import (
-  /*"fmt"*/
+  "fmt"
   "testing"
 )
+
+// TODO: Mock out network access.  Tests currently require an FTP server
+// running on localhost.
 
 func TestDial(t *testing.T) {
   _, err := Dial("")
   if err == nil {
-    t.Error("Dial() should have an error on blank 'host'!")
+    t.Error("Dial() should return an error on blank 'host'!")
   }
   _, err = Dial("localhost:21")
   if err != nil {
@@ -27,11 +30,23 @@ func TestLogin(t *testing.T) {
   }
   err = conn.Login("", "anonymous@")
   if err == nil {
-    t.Error("Login() should have an error on blank 'user'!")
+    t.Error("Login() should return an error on blank 'user'!")
   }
   err = conn.Login("anonymous", "")
   if err == nil {
-    t.Error("Login() should have an error on blank 'password'!")
+    t.Error("Login() should return an error on blank 'password'!")
   }
+}
+
+func TestCmd(t *testing.T) {
+  conn, err := Dial("localhost:ftp")
+  if err != nil {
+    t.Fatal(err)
+  }
+  code, response, err := conn.Cmd("USER", "anonymous")
+  if err != nil {
+    t.Error(err)
+  }
+  fmt.Println("Response Code:", code, "Response Text:", response)
 }
 

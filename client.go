@@ -1,9 +1,11 @@
 package ftp
 
 import (
+  /*"fmt"*/
   "io"
   "net"
   "os"
+  "strconv"
   "strings"
 )
 
@@ -14,7 +16,30 @@ type Connection struct {
 
 var CRLF = "\r\n"
 
-func (c *Connection) cmd() {
+// Executes an FTP command.
+// Sends the command to the server.
+// Returns the response code, and the response text from the server. 
+func (c *Connection) Cmd(command string, arg string) (code uint, line string, err os.Error) {
+  // Format command to be sent to the server.
+  formatted_command := command + " " + arg + CRLF
+  // TODO How big should this buffer be?
+  var buf = make([]byte, 1024)
+  // Send command to the server.
+  _, err = c.control.Write([]byte(formatted_command))
+  if err != nil {
+    return 0, "", err
+  }
+  // Read the server's response.
+  _, err = c.control.Read(buf)
+  if err != nil {
+    return 0, "", err
+  }
+  line = string(buf)
+  code, err = strconv.Atoui(line[0:3])
+  if err != nil {
+    return 0, line, err
+  }
+  return code, line, err
 }
 
 // Log into a FTP server using username and password.
@@ -25,8 +50,9 @@ func (c *Connection) Login(user string, password string) os.Error {
   if password == "" {
     return os.NewError("FTP Connection Error: Password can not be blank!")
   }
-  _, err := c.control.Write([]byte("USER " + user + CRLF))
-  _, err = c.control.Write([]byte("PASS " + password + CRLF))
+  // TODO: Check the server's response codes.
+  _, _, err := c.Cmd("USER", user)
+  _, _, err = c.Cmd("PASS", password)
   if err != nil {
     return err
   }

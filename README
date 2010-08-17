@@ -13,7 +13,7 @@ TODO:
   PASS password
   process result
 
-  TYPE I (binary) for tarballs or TYPE A (ascii) for package.fig files
+  TYPE I (binary) for tarballs or TYPE A (ascii) for text files
   process result
     200 Type set to A or I
 
