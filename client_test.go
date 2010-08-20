@@ -50,3 +50,14 @@ func TestCmd(t *testing.T) {
   fmt.Println("Response Code:", code, "Response Text:", response)
 }
 
+func TestExtractDataPort(t *testing.T) {
+  test_string := "227 Entering Passive Mode (127,0,0,1,205,238)."
+  port, err := extractDataPort(test_string)
+  if err != nil {
+    t.Error(err)
+  }
+  if port != 52718 {
+    t.Error("Failed port calculation! Expected 52718, got", port)
+  }
+}
+
