@@ -61,3 +61,17 @@ func TestExtractDataPort(t *testing.T) {
   }
 }
 
+func TestDownload(t *testing.T) {
+  conn, err := Dial("localhost:21")
+  if err != nil {
+    t.Fatal(err)
+  }
+  err = conn.Login("anonymous", "anonymous@")
+  if err != nil {
+    t.Error(err)
+  }
+  err = conn.DownloadFile("test_file.txt", "./test.txt", ASCII)
+  if err != nil {
+    t.Error(err)
+  }
+}

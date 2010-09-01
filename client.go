@@ -1,7 +1,7 @@
 package ftp
 
 import (
-  /*"fmt"*/
+  "fmt"
   "io"
   "net"
   "os"
@@ -16,6 +16,8 @@ type Connection struct {
 }
 
 var CRLF = "\r\n"
+var ASCII = "A"
+var BINARY = "I"
 
 // Dials up a remote FTP server.
 // host should be in the form of address:port e.g. myserver:21 or myserver:ftp
@@ -74,6 +76,30 @@ func (c *Connection) Login(user string, password string) os.Error {
   if err != nil {
     return err
   }
+  return nil
+}
+
+func (c *Connection) DownloadFile(src, dest, mode string) os.Error {
+  code, _, err := c.Cmd("TYPE", mode)
+  if err != nil {
+    return err
+  }
+  type_err := checkResponseCode(2, code)
+  if type_err != nil {
+  }
+  /*c.Cmd("PASV", "")*/
+  /*c.Cmd("RETR", src)*/
+  return os.NewError("Done yet?")
+}
+
+// Given an prefix, does the response code 
+func checkResponseCode(expectCode, code uint) os.Error {
+  if 1 <= expectCode && expectCode < 10 && code/100 != expectCode ||
+    10 <= expectCode && expectCode < 100 && code/10 != expectCode ||
+      100 <= expectCode && expectCode < 1000 && code != expectCode {
+        msg := fmt.Sprintf("Bad response from server. Expected: %d, Got: %d", expectCode, code)
+        return os.NewError(msg)
+      }
   return nil
 }
 
