@@ -1,3 +1,4 @@
+include $(GOROOT)/src/Make.inc
 include $(GOROOT)/src/Make.$(GOARCH)
 
 TARG=ftp

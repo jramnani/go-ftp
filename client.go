@@ -86,7 +86,7 @@ func extractDataPort(line string) (port uint, err os.Error) {
   if err != nil {
     return 0, err
   }
-  match := re.MatchStrings(line)
+  match := re.FindStringSubmatch(line)
   octets := strings.Split(match[1], ",", 2)
   firstOctet, _ := strconv.Atoui(octets[0])
   secondOctet, _ := strconv.Atoui(octets[1])
