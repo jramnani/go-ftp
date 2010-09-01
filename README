@@ -1,7 +1,7 @@
 TODO:
 
-* Log in. -- Done.
-* Download a file.
+* Log in. -- Done
+* Download a file. -- Done
 * List contents of remote directory.
 * Upload a file to an existing directory.
 * Upload a file to a nested directory, creating necessary subfolders.

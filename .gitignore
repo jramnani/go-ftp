@@ -2,3 +2,5 @@
 _go*
 _obj/
 _test/
+tags
+test.txt
