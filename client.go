@@ -13,6 +13,7 @@ import (
 // Knows the control connection where commands are sent to the server.
 type Connection struct {
   control io.ReadWriteCloser
+  hostname string
 }
 
 var CRLF = "\r\n"
@@ -33,7 +34,9 @@ func Dial(host string) (*Connection, os.Error) {
   if err != nil {
     return nil, err
   }
-  return &Connection{conn}, nil
+  // This doesn't work for IPv6 addresses.
+  hostParts := strings.Split(host, ":", 2)
+  return &Connection{conn, hostParts[0]}, nil
 }
 
 // Executes an FTP command.
@@ -79,17 +82,47 @@ func (c *Connection) Login(user string, password string) os.Error {
   return nil
 }
 
+// Download a file from a remote server.
+// Assumes only passive FTP connections for now.
 func (c *Connection) DownloadFile(src, dest, mode string) os.Error {
   code, _, err := c.Cmd("TYPE", mode)
   if err != nil {
     return err
   }
-  type_err := checkResponseCode(2, code)
-  if type_err != nil {
+  typeErr := checkResponseCode(2, code)
+  if typeErr != nil {
+    return typeErr
   }
-  /*c.Cmd("PASV", "")*/
-  /*c.Cmd("RETR", src)*/
-  return os.NewError("Done yet?")
+  code, pasvLine, err := c.Cmd("PASV", "")
+  if err != nil {
+    return err
+  }
+  pasvErr := checkResponseCode(2, code)
+  if pasvErr != nil {
+    return pasvErr
+  }
+  /*dataPort, err := extractDataPort(pasvLine)*/
+  _, err = extractDataPort(pasvLine)
+  if err != nil {
+    return err
+  }
+  /*code, _, err = c.Cmd("RETR", src)*/
+  /*if err != nil {*/
+    /*return err*/
+  /*}*/
+  /*retrErr := checkResponseCode(1, code)*/
+  /*if retrErr != nil {*/
+    /*return retrErr*/
+  /*}*/
+  /*remoteConnectString := c.hostname + ":" + dataPort*/
+  /*download_conn, err = net.Dial("tcp", "", remoteConnectString)*/
+  /*if err != nil {*/
+    /*msg := fmt.Sprintf("Couldn't connect to server's remote data port. Error: %v", err)*/
+    /*return os.NewError(msg)*/
+  /*}*/
+  // Downloading the file contents into a destination file goes here...
+
+  return os.NewError("Not implemented yet.")
 }
 
 // Given an prefix, does the response code 
