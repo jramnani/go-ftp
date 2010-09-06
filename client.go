@@ -34,6 +34,19 @@ func Dial(host string) (*Connection, os.Error) {
   if err != nil {
     return nil, err
   }
+  // Upon connect, most servers respond with a welcome message.
+  // The welcome message contains a status code, just like any other command.
+  // TODO: Handle servers with no welcome message.
+  welcomeMsg := make([]byte, 1024)
+  _, err = conn.Read(welcomeMsg)
+  if err != nil {
+    return nil, os.NewError("Couldn't read the server's initital connection information. Error: " + err.String())
+  }
+  code, err := strconv.Atoui(string(welcomeMsg[0:3]))
+  err = checkResponseCode(2, code)
+  if err != nil {
+    return nil, os.NewError("Couldn't read the server's Welcome Message. Error: " + err.String())
+  }
   // This doesn't work for IPv6 addresses.
   hostParts := strings.Split(host, ":", 2)
   return &Connection{conn, hostParts[0]}, nil
@@ -93,39 +106,55 @@ func (c *Connection) DownloadFile(src, dest, mode string) os.Error {
   if typeErr != nil {
     return typeErr
   }
-  code, pasvLine, err := c.Cmd("PASV", "")
+  pasvCode, pasvLine, err := c.Cmd("PASV", "")
   if err != nil {
     return err
   }
-  pasvErr := checkResponseCode(2, code)
+  pasvErr := checkResponseCode(2, pasvCode)
   if pasvErr != nil {
     return pasvErr
   }
-  /*dataPort, err := extractDataPort(pasvLine)*/
-  _, err = extractDataPort(pasvLine)
+  dataPort, err := extractDataPort(pasvLine)
+  /*_, err = extractDataPort(pasvLine)*/
   if err != nil {
     return err
   }
-  /*code, _, err = c.Cmd("RETR", src)*/
-  /*if err != nil {*/
-    /*return err*/
-  /*}*/
-  /*retrErr := checkResponseCode(1, code)*/
-  /*if retrErr != nil {*/
-    /*return retrErr*/
-  /*}*/
-  /*remoteConnectString := c.hostname + ":" + dataPort*/
-  /*download_conn, err = net.Dial("tcp", "", remoteConnectString)*/
-  /*if err != nil {*/
-    /*msg := fmt.Sprintf("Couldn't connect to server's remote data port. Error: %v", err)*/
-    /*return os.NewError(msg)*/
-  /*}*/
+  // Can't use Cmd() because RETR doesn't return until *after* you've downloaded
+  // the requested file.
+  command := []byte("RETR " + src + CRLF)
+  _, err = c.control.Write(command)
+  if err != nil {
+    return err
+  }
+  fmt.Println("DEBUG *** Remote data port is:", fmt.Sprintf("%d", dataPort))
+  remoteConnectString := c.hostname + ":" + fmt.Sprintf("%d", dataPort)
+  fmt.Println("DEBUG *** Connecting to download port", remoteConnectString)
+  download_conn, err := net.Dial("tcp", "", remoteConnectString)
+  fmt.Println("DEBUG *** Connected to download port", remoteConnectString)
+  if err != nil {
+    msg := fmt.Sprintf("Couldn't connect to server's remote data port. Error: %v", err)
+    return os.NewError(msg)
+  }
   // Downloading the file contents into a destination file goes here...
+  // First read a buffer full of data from the data port.
+  // Append that bufferful into a file.
+  // Rinse and repeat until we get an EOF from the socket.
+  // This way we don't use too much memory slurping the downloaded file into 
+  // memory and then stuffing it into a file.
+  bufLen := 1024
+  buf := make([]byte, bufLen)
+  /*nr, readErr := download_conn.Read(buf)*/
+  _, readErr := download_conn.Read(buf)
+  if readErr != nil {
+    return readErr
+  }
+  fmt.Println("DEBUG *** Download buffer contains:", string(buf))
+  download_conn.Close()
 
   return os.NewError("Not implemented yet.")
 }
 
-// Given an prefix, does the response code 
+// Given an prefix, does the response code match the expected code?
 func checkResponseCode(expectCode, code uint) os.Error {
   if 1 <= expectCode && expectCode < 10 && code/100 != expectCode ||
     10 <= expectCode && expectCode < 100 && code/10 != expectCode ||
@@ -146,6 +175,10 @@ func extractDataPort(line string) (port uint, err os.Error) {
     return 0, err
   }
   match := re.FindStringSubmatch(line)
+  if len(match) == 0 {
+    msg := "Cannot find data port in server output: " + line
+    return 0, os.NewError(msg)
+  }
   octets := strings.Split(match[1], ",", 2)
   firstOctet, _ := strconv.Atoui(octets[0])
   secondOctet, _ := strconv.Atoui(octets[1])

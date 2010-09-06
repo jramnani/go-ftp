@@ -1,7 +1,7 @@
 package ftp
 
 import (
-  "fmt"
+  /*"fmt"*/
   "testing"
 )
 
@@ -43,11 +43,10 @@ func TestCmd(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
-  code, response, err := conn.Cmd("USER", "anonymous")
+  _, _, err = conn.Cmd("USER", "anonymous")
   if err != nil {
     t.Error(err)
   }
-  fmt.Println("Response Code:", code, "Response Text:", response)
 }
 
 func TestExtractDataPort(t *testing.T) {
