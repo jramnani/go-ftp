@@ -19,6 +19,7 @@ type Connection struct {
 var CRLF = "\r\n"
 var ASCII = "A"
 var BINARY = "I"
+var IMAGE = "I" //Synonymous with "Binary"
 
 // Dials up a remote FTP server.
 // host should be in the form of address:port e.g. myserver:21 or myserver:ftp
@@ -98,60 +99,81 @@ func (c *Connection) Login(user string, password string) os.Error {
 // Download a file from a remote server.
 // Assumes only passive FTP connections for now.
 func (c *Connection) DownloadFile(src, dest, mode string) os.Error {
-  code, _, err := c.Cmd("TYPE", mode)
-  if err != nil {
-    return err
-  }
-  typeErr := checkResponseCode(2, code)
-  if typeErr != nil {
-    return typeErr
-  }
+  // Use PASV to set up the data port.
   pasvCode, pasvLine, err := c.Cmd("PASV", "")
   if err != nil {
     return err
   }
   pasvErr := checkResponseCode(2, pasvCode)
   if pasvErr != nil {
-    return pasvErr
+    msg := fmt.Sprintf("Cannot set PASV. Error: %v", pasvErr)
+    return os.NewError(msg)
   }
   dataPort, err := extractDataPort(pasvLine)
   /*_, err = extractDataPort(pasvLine)*/
   if err != nil {
     return err
   }
-  // Can't use Cmd() because RETR doesn't return until *after* you've downloaded
-  // the requested file.
+
+  // Set the TYPE (ASCII or Binary)
+  typeCode, typeLine, err := c.Cmd("TYPE", mode)
+  if err != nil {
+    return err
+  }
+  typeErr := checkResponseCode(2, typeCode)
+  if typeErr != nil {
+    msg := fmt.Sprintf("Cannot set TYPE. Error: '%v'. Line: '%v'", typeErr, typeLine)
+    return os.NewError(msg)
+  }
+
+  // Can't use Cmd() for RETR because it doesn't return until *after* you've
+  // downloaded the requested file.
   command := []byte("RETR " + src + CRLF)
   _, err = c.control.Write(command)
   if err != nil {
     return err
   }
-  fmt.Println("DEBUG *** Remote data port is:", fmt.Sprintf("%d", dataPort))
+
+  // Open connection to remote data port.
   remoteConnectString := c.hostname + ":" + fmt.Sprintf("%d", dataPort)
-  fmt.Println("DEBUG *** Connecting to download port", remoteConnectString)
   download_conn, err := net.Dial("tcp", "", remoteConnectString)
-  fmt.Println("DEBUG *** Connected to download port", remoteConnectString)
+  defer download_conn.Close()
   if err != nil {
     msg := fmt.Sprintf("Couldn't connect to server's remote data port. Error: %v", err)
     return os.NewError(msg)
   }
-  // Downloading the file contents into a destination file goes here...
-  // First read a buffer full of data from the data port.
-  // Append that bufferful into a file.
-  // Rinse and repeat until we get an EOF from the socket.
-  // This way we don't use too much memory slurping the downloaded file into 
-  // memory and then stuffing it into a file.
+
+  // Set up the destination file
+  var filePerms uint32 = 0664
+  destFile, err := os.Open(dest, os.O_CREAT|os.O_WRONLY, filePerms)
+  defer destFile.Close()
+  if err != nil {
+    msg := fmt.Sprintf("Cannot open destination file, '%s'. %v", dest, err)
+    return os.NewError(msg)
+  }
+
+  // Buffer for downloading and writing to file
   bufLen := 1024
   buf := make([]byte, bufLen)
-  /*nr, readErr := download_conn.Read(buf)*/
-  _, readErr := download_conn.Read(buf)
-  if readErr != nil {
-    return readErr
-  }
-  fmt.Println("DEBUG *** Download buffer contains:", string(buf))
-  download_conn.Close()
 
-  return os.NewError("Not implemented yet.")
+  // Read from the server and write the contents to a file
+  for {
+    bytesRead, readErr := download_conn.Read(buf)
+    if bytesRead > 0 {
+      _, err := destFile.Write(buf[0:bytesRead])
+      if err != nil {
+        msg := fmt.Sprintf("Coudn't write to file, '%s'. Error: %v", dest, err)
+        return os.NewError(msg)
+      }
+    }
+    if readErr == os.EOF {
+      break
+    }
+    if readErr != nil {
+      return readErr
+    }
+  }
+  return nil
 }
 
 // Given an prefix, does the response code match the expected code?

@@ -69,7 +69,7 @@ func TestDownload(t *testing.T) {
   if err != nil {
     t.Error(err)
   }
-  err = conn.DownloadFile("test_file.txt", "./test.txt", ASCII)
+  err = conn.DownloadFile("test_file.txt", "./test.txt", BINARY)
   if err != nil {
     t.Error(err)
   }
