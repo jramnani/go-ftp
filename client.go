@@ -1,6 +1,7 @@
 package ftp
 
 import (
+  "bufio"
   "fmt"
   "io"
   "net"
@@ -55,28 +56,38 @@ func Dial(host string) (*Connection, os.Error) {
 
 // Executes an FTP command.
 // Sends the command to the server.
-// Returns the response code, the response text from the server, and any errors. 
-func (c *Connection) Cmd(command string, arg string) (code uint, line string, err os.Error) {
+// Returns the response code, the response text from the server, and any errors.
+// The response code will be zero if an error is encountered.
+// The response string will be the empty string if an error is encountered.
+func (c *Connection) Cmd(command string, arg string) (code uint, response string, err os.Error) {
   // Format command to be sent to the server.
   formattedCommand := command + " " + arg + CRLF
-  // TODO How big should this buffer be?
-  var buf = make([]byte, 1024)
+
   // Send command to the server.
   _, err = c.control.Write([]byte(formattedCommand))
   if err != nil {
     return 0, "", err
   }
-  // Read the server's response.
-  _, err = c.control.Read(buf)
-  if err != nil {
-    return 0, "", err
+
+  // Process the response.
+  reader := bufio.NewReader(c.control)
+  regex := regexp.MustCompile("[0-9][0-9][0-9] ")
+  for {
+    ln, err := reader.ReadString('\n')
+    if err != nil {
+      return 0, "", err
+    }
+
+    response += ln
+    if regex.MatchString(ln) {
+      break
+    }
   }
-  line = string(buf)
-  code, err = strconv.Atoui(line[0:3])
+  code, err = strconv.Atoui(response[0:3])
   if err != nil {
-    return 0, line, err
+    return 0, response, err
   }
-  return code, line, err
+  return code, response, err
 }
 
 // Log into a FTP server using username and password.
