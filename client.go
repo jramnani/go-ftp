@@ -187,6 +187,81 @@ func (c *Connection) DownloadFile(src, dest, mode string) os.Error {
   return nil
 }
 
+func (c *Connection) UploadFile(src, dest, mode string) os.Error {
+  // Use PASV to set up the data port.
+  pasvCode, pasvLine, err := c.Cmd("PASV", "")
+  if err != nil {
+    return err
+  }
+  pasvErr := checkResponseCode(2, pasvCode)
+  if pasvErr != nil {
+    msg := fmt.Sprintf("Cannot set PASV. Error: %v", pasvErr)
+    return os.NewError(msg)
+  }
+  dataPort, err := extractDataPort(pasvLine)
+  if err != nil {
+    return err
+  }
+
+  // Set the TYPE (ASCII or Binary)
+  typeCode, typeLine, err := c.Cmd("TYPE", mode)
+  if err != nil {
+    return err
+  }
+  typeErr := checkResponseCode(2, typeCode)
+  if typeErr != nil {
+    msg := fmt.Sprintf("Cannot set TYPE. Error: '%v'. Line: '%v'", typeErr, typeLine)
+    return os.NewError(msg)
+  }
+  // Can't use Cmd() for STOR because it doesn't return until *after* you've
+  // uploaded the requested file.
+  command := []byte("STOR " + dest + CRLF)
+  _, err = c.control.Write(command)
+  if err != nil {
+    return err
+  }
+
+  // Open connection to remote data port.
+  remoteConnectString := c.hostname + ":" + fmt.Sprintf("%d", dataPort)
+  upload_conn, err := net.Dial("tcp", "", remoteConnectString)
+  defer upload_conn.Close()
+  if err != nil {
+    msg := fmt.Sprintf("Couldn't connect to server's remote data port. Error: %v", err)
+    return os.NewError(msg)
+  }
+
+  // Open the source file for uploading
+  sourceFile, err := os.Open(src, os.O_RDONLY, 0644)
+  defer sourceFile.Close()
+  if err != nil {
+    msg := fmt.Sprintf("Cannot open src file, '%s'. %v", src, err)
+    os.NewError(msg)
+  }
+
+  // Buffer for uploading the file
+  bufLen := 1024
+  buf := make([]byte, bufLen)
+
+  // Read from the file and write the contents to the server
+  for {
+    bytesRead, readErr := sourceFile.Read(buf)
+    if bytesRead > 0 {
+      _, writeErr := upload_conn.Write(buf[0:bytesRead])
+      if writeErr  != nil {
+        msg := fmt.Sprintf("Coudn't write file to server, '%s'. Error: %v", sourceFile, writeErr)
+        return os.NewError(msg)
+      }
+    }
+    if readErr == os.EOF {
+      break
+    }
+    if readErr != nil {
+      return readErr
+    }
+  }
+  return nil
+}
+
 // Given an prefix, does the response code match the expected code?
 func checkResponseCode(expectCode, code uint) os.Error {
   if 1 <= expectCode && expectCode < 10 && code/100 != expectCode ||

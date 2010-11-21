@@ -4,9 +4,10 @@ TODO:
 
 * Log in. -- Done
 * Download a file. -- Done
+* Upload a file to an existing directory. -- Done
 * List contents of remote directory.
-* Upload a file to an existing directory.
-* Upload a file to a nested directory, creating necessary subfolders.
+* Create a new directory.
+* Delete a a directory or a file.
 
 ------
 

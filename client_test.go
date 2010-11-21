@@ -69,7 +69,22 @@ func TestDownload(t *testing.T) {
   if err != nil {
     t.Error(err)
   }
-  err = conn.DownloadFile("test_file.txt", "./test.txt", BINARY)
+  err = conn.DownloadFile("/test_file.txt", "./download_test.txt", BINARY)
+  if err != nil {
+    t.Error(err)
+  }
+}
+
+func TestUpload(t *testing.T) {
+  conn, err := Dial("localhost:21")
+  if err != nil {
+    t.Fatal(err)
+  }
+  err = conn.Login("anonymous", "anonymous@")
+  if err != nil {
+    t.Error(err)
+  }
+  err = conn.UploadFile("upload_file.txt", "/up/uploaded.txt", BINARY)
   if err != nil {
     t.Error(err)
   }
