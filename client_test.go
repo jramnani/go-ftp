@@ -38,6 +38,21 @@ func TestLogin(t *testing.T) {
   }
 }
 
+func TestLogout(t *testing.T) {
+  conn, err := Dial("localhost:21")
+  if err != nil {
+    t.Fatal(err)
+  }
+  err = conn.Login("anonymous", "anonymous@")
+  if err != nil {
+    t.Error(err)
+  }
+  err = conn.Logout()
+  if err != nil {
+    t.Error(err)
+  }
+}
+
 func TestCmd(t *testing.T) {
   conn, err := Dial("localhost:ftp")
   if err != nil {
@@ -57,6 +72,36 @@ func TestExtractDataPort(t *testing.T) {
   }
   if port != 52718 {
     t.Error("Failed port calculation! Expected 52718, got", port)
+  }
+}
+
+func TestCheckResponseCode(t *testing.T) {
+  // Success
+  err := checkResponseCode(2, 230)
+  if err != nil {
+    t.Error("Should return nil if response code matches! ExpectCode: 2  ActualCode: 230")
+  }
+  err = checkResponseCode(23, 230)
+  if err != nil {
+    t.Error("Should return nil if response code matches! ExpectCode: 23  ActualCode: 230")
+  }
+  err = checkResponseCode(230, 230)
+  if err != nil {
+    t.Error("Should return nil if response code matches! ExpectCode: 230  ActualCode: 230")
+  }
+
+  // Failure
+  err = checkResponseCode(2, 500)
+  if err == nil {
+    t.Error("Should return error if response code doesn't match (ExpectCode: 2  ActualCode: 500)!")
+  }
+  err = checkResponseCode(23, 500)
+  if err == nil {
+    t.Error("Should return error if response code doesn't match (ExpectCode: 23  ActualCode: 500)!")
+  }
+  err = checkResponseCode(230, 500)
+  if err == nil {
+    t.Error("Should return error if response code doesn't match (ExpectCode: 230  ActualCode: 500)!")
   }
 }
 

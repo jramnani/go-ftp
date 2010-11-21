@@ -107,6 +107,18 @@ func (c *Connection) Login(user string, password string) os.Error {
   return nil
 }
 
+func (c *Connection) Logout() os.Error {
+  _, _, err := c.Cmd("QUIT", "")
+  if err != nil {
+    return err
+  }
+  err = c.control.Close()
+  if err != nil {
+    return err
+  }
+  return nil
+}
+
 // Download a file from a remote server.
 // Assumes only passive FTP connections for now.
 func (c *Connection) DownloadFile(src, dest, mode string) os.Error {
